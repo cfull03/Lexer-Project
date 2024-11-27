@@ -2,92 +2,79 @@ package lexer;
 
 import java.util.*;
 
+/**
+ * A simple lexical analyzer (lexer) that tokenizes a given source string
+ * into a sequence of tokens based on predefined rules.
+ */
 public class Lexer {
-	private final String source;
-    private final Queue<Token> tokens = new LinkedList<Token>();
+
+    private final String source;
+    private final Queue<Token> tokens = new LinkedList<>();
     private int start = 0;
     private int current = 0;
 
+    /**
+     * Constructs a Lexer with the given source string.
+     *
+     * @param source The input source string to be tokenized.
+     */
     public Lexer(String source) {
-        this.source = source;
+        this.source = Objects.requireNonNull(source, "Source cannot be null");
     }
 
+    /**
+     * Tokenizes the source string and returns a queue of tokens.
+     *
+     * @return A {@link Queue} of {@link Token} objects representing the tokenized input.
+     */
     public Queue<Token> tokenize() {
-        while(!end()) {
-            whitespace();
+        while (!isAtEnd()) {
+            skipWhitespace();
             start = current;
-            next();
+            scanNext();
         }
         return tokens;
     }
 
-    private void next() {
-        if(end()) return;
-        char c = forward();
-        switch(c) {
-            case '(': tokens.add(new Token("LEFT_PAREN", "(")); break;
-            case ')': tokens.add(new Token("RIGHT_PAREN", ")")); break;
-            case ';': tokens.add(new Token("SEMICOLON", ";")); break;
-            case '+': tokens.add(new Token("PLUS", "+")); break;
-            case '-': tokens.add(new Token("MINUS", "-")); break;
-            case '*': tokens.add(new Token("MULTIPLY", "*")); break;
-            case '/': tokens.add(new Token("DIVIDE", "/")); break;
-            case '%': tokens.add(new Token("MODULUS", "%")); break;
-            case ':': tokens.add(new Token("COLON", ":")); break;
-            case '=':
-                if(match('=')) {
-                    tokens.add(new Token("EQUALS", "=="));
-                    current++;
-                }else {
-                    tokens.add(new Token("ASSIGN", "="));
-                }
-                break;
-            case '>':
-                if(match('=')) {
-                    tokens.add(new Token("GREATER_THAN_OR_EQUAL_TO", ">="));
-                    current++;
-                } else {
-                    tokens.add(new Token("GREATER_THAN", ">"));
-                }
-                break;
-            case '<':
-                if(match('=')) {
-                    tokens.add(new Token("LESS_THAN_OR_EQUAL_TO", "<="));
-                    current++;
-                } else {
-                    tokens.add(new Token("LESS_THAN", "<"));
-                }
-                break;
-            case '!':
-            	if(match('=')) {
-            		tokens.add(new Token("NOT_EQUAL", "!="));
-            		current++;
-            	}else {
-            		tokens.add(new Token("NOT", "!"));
-            	}
-            	break;
-            default:
-                if(Character.isDigit(c)) {
-                    number();
-                } else if(Character.isLetter(c) || c == '_') {
-                    identifier();
+    private void scanNext() {
+        if (isAtEnd()) return;
+        char c = advance();
+        switch (c) {
+            case '(' -> tokens.add(new Token("LEFT_PAREN", "("));
+            case ')' -> tokens.add(new Token("RIGHT_PAREN", ")"));
+            case ';' -> tokens.add(new Token("SEMICOLON", ";"));
+            case '+' -> tokens.add(new Token("PLUS", "+"));
+            case '-' -> tokens.add(new Token("MINUS", "-"));
+            case '*' -> tokens.add(new Token("MULTIPLY", "*"));
+            case '/' -> tokens.add(new Token("DIVIDE", "/"));
+            case '%' -> tokens.add(new Token("MODULUS", "%"));
+            case ':' -> tokens.add(new Token("COLON", ":"));
+            case '=' -> tokens.add(match('=') ? new Token("EQUALS", "==") : new Token("ASSIGN", "="));
+            case '>' -> tokens.add(match('=') ? new Token("GREATER_THAN_OR_EQUAL_TO", ">=") : new Token("GREATER_THAN", ">"));
+            case '<' -> tokens.add(match('=') ? new Token("LESS_THAN_OR_EQUAL_TO", "<=") : new Token("LESS_THAN", "<"));
+            case '!' -> tokens.add(match('=') ? new Token("NOT_EQUAL", "!=") : new Token("NOT", "!"));
+            default -> {
+                if (Character.isDigit(c)) {
+                    scanNumber();
+                } else if (Character.isLetter(c) || c == '_') {
+                    scanIdentifier();
                 } else {
                     throw new IllegalArgumentException("Unexpected character: " + c);
                 }
-                break;
+            }
         }
     }
 
-    private void number() {
-        while(Character.isDigit(peek())) {
-            forward();
+    private void scanNumber() {
+        while (Character.isDigit(peek())) {
+            advance();
         }
-        tokens.add(new Token("VAR", source.substring(start, current)));
+        tokens.add(new Token("NUMBER", source.substring(start, current)));
     }
 
-    private void identifier() {
-        while(Character.isLetterOrDigit(peek()) || peek() == '_') {
-            forward();
+    private void scanIdentifier() {
+        while (Character.isLetterOrDigit(peek()) || peek() == '_') {
+            advance();
         }
         String id = source.substring(start, current);
         String type = switch (id) {
@@ -97,24 +84,21 @@ public class Lexer {
             case "end_if" -> "END_IF";
             case "loop" -> "LOOP";
             case "end_loop" -> "END_LOOP";
-            default -> "VAR";
+            default -> "IDENTIFIER";
         };
         tokens.add(new Token(type, id));
     }
 
-    private boolean end() {
+    private boolean isAtEnd() {
         return current >= source.length();
     }
 
-    private char forward() {
-        if (!end()) {
-            return source.charAt(current++);
-        }
-        return '\0'; 
+    private char advance() {
+        return isAtEnd() ? '\0' : source.charAt(current++);
     }
 
     private boolean match(char expected) {
-        if (end() || source.charAt(current) != expected) {
+        if (isAtEnd() || source.charAt(current) != expected) {
             return false;
         }
         current++;
@@ -122,21 +106,12 @@ public class Lexer {
     }
 
     private char peek() {
-        if (!end()) {
-            return source.charAt(current);
-        }
-        return '\0';
+        return isAtEnd() ? '\0' : source.charAt(current);
     }
-    
-    private void whitespace() {
-        while (!end() && Character.isWhitespace(peek())) {
-            forward();
+
+    private void skipWhitespace() {
+        while (!isAtEnd() && Character.isWhitespace(peek())) {
+            advance();
         }
     }
 }
-
-
-
-
-
-

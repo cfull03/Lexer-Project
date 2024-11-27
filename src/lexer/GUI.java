@@ -5,49 +5,64 @@ import java.awt.*;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * A graphical user interface for a simple parser application.
+ * Users can input code, parse it, and view the output or errors.
+ */
 public class GUI extends JFrame {
+
     private static final long serialVersionUID = 1L;
-    private JTextArea input;
-    private JTextArea output;
+
+    private final JTextArea input;
+    private final JTextArea output;
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
+    /**
+     * Constructs the GUI and sets up its components.
+     */
     public GUI() {
         setTitle("Simple Parser GUI");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(new Dimension(600, 400));
+        setSize(600, 400);
 
+        // Input Text Area
         input = new JTextArea(10, 30);
         input.setLineWrap(true);
         input.setWrapStyleWord(true);
-        JScrollPane inputScrollPane = new JScrollPane(input, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        var inputScrollPane = new JScrollPane(input, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
+        // Output Text Area
         output = new JTextArea(10, 30);
         output.setEditable(false);
         output.setLineWrap(true);
         output.setWrapStyleWord(true);
-        JScrollPane outputScrollPane = new JScrollPane(output, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        var outputScrollPane = new JScrollPane(output, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
-        JButton parseButton = new JButton("Parse");
+        // Buttons
+        var parseButton = new JButton("Parse");
         parseButton.addActionListener(e -> parse());
 
-        JButton clearButton = new JButton("Clear Output");
+        var clearButton = new JButton("Clear Output");
         clearButton.addActionListener(e -> output.setText(""));
 
-        JPanel buttonPanel = new JPanel();
+        // Button Panel
+        var buttonPanel = new JPanel();
         buttonPanel.add(parseButton);
         buttonPanel.add(clearButton);
 
-        JPanel contentPane = new JPanel(new BorderLayout(5, 5));
+        // Main Content Pane
+        var contentPane = new JPanel(new BorderLayout(5, 5));
         contentPane.add(inputScrollPane, BorderLayout.CENTER);
         contentPane.add(outputScrollPane, BorderLayout.SOUTH);
         contentPane.add(buttonPanel, BorderLayout.NORTH);
 
         setContentPane(contentPane);
         setLocationRelativeTo(null);
-
-        startWatch();
     }
 
+    /**
+     * Starts the parsing process.
+     */
     private void parse() {
         if (isRunning.compareAndSet(false, true)) {
             new ParseWorker().execute();
@@ -56,31 +71,27 @@ public class GUI extends JFrame {
         }
     }
 
+    /**
+     * Displays an error message in a dialog box.
+     *
+     * @param errorMessage The error message to display.
+     */
     private void showError(String errorMessage) {
         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this, "Error: " + errorMessage, "Parsing Error", JOptionPane.ERROR_MESSAGE));
     }
 
+    /**
+     * Displays a success message in a dialog box.
+     *
+     * @param message The success message to display.
+     */
     private void showSuccess(String message) {
         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this, message, "Parsing Success", JOptionPane.INFORMATION_MESSAGE));
     }
 
-    private void startWatch() {
-        Thread watch = new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(5000);
-                    if (isRunning.get()) {
-                        showError("The application has become unresponsive.");
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        });
-        watch.setDaemon(true);
-        watch.start();
-    }
-
+    /**
+     * Worker thread for parsing the input asynchronously.
+     */
     private class ParseWorker extends SwingWorker<Void, Void> {
         @Override
         protected Void doInBackground() {
@@ -98,17 +109,13 @@ public class GUI extends JFrame {
                 });
             } catch (Exception ex) {
                 SwingUtilities.invokeLater(() -> {
-                    output.append("Parsing failed: " + ex.toString() + "\n");
-                    showError(ex.toString());
+                    output.append("Parsing failed: " + ex.getMessage() + "\n");
+                    showError(ex.getMessage());
                 });
             } finally {
                 isRunning.set(false);
             }
             return null;
         }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new GUI().setVisible(true));
     }
 }
